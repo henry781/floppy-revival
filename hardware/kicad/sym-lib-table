@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "FloppyRevival")(type "KiCad")(uri "${KIPRJMOD}/lib/FloppyRevival.kicad_sym")(options "")(descr "Project symbols"))
+)

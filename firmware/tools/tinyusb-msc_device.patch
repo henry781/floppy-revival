@@ -1,0 +1,100 @@
+--- tinyusb-0.18.0/src/class/msc/msc_device.c
++++ src/tinyusb/msc_device.c
+@@ -1,3 +1,17 @@
++// FloppyRevival: verbatim copy of TinyUSB 0.18.0 src/class/msc/msc_device.c
++// (pico-sdk 2.3.1 submodule, commit 86ad6e5) with two changes, marked
++// "FloppyRevival" below: READ FORMAT CAPACITIES (0x23) is no longer handled
++// by the built-in SCSI switch and reaches tud_msc_scsi_cb; a READ(10) or
++// WRITE(10) callback that fails keeps the sense it set (unrecovered read
++// error, write fault, data protect) instead of having it replaced by
++// "medium not present". The SDK copy is excluded from the link in
++// CMakeLists.txt. The diff against upstream is kept in
++// tools/tinyusb-msc_device.patch; regenerate it after any edit:
++//   diff -u --label tinyusb-0.18.0/src/class/msc/msc_device.c \
++//     --label src/tinyusb/msc_device.c \
++//     $PICO_SDK_PATH/lib/tinyusb/src/class/msc/msc_device.c \
++//     src/tinyusb/msc_device.c > tools/tinyusb-msc_device.patch
++//
+ /*
+  * The MIT License (MIT)
+  *
+@@ -32,7 +46,7 @@
+ #include "device/usbd.h"
+ #include "device/usbd_pvt.h"
+ 
+-#include "msc_device.h"
++#include "class/msc/msc_device.h"
+ 
+ // Level where CFG_TUSB_DEBUG must be at least for this driver is logged
+ #ifndef CFG_TUD_MSC_LOG_LEVEL
+@@ -643,39 +657,12 @@
+     }
+     break;
+ 
+-    case SCSI_CMD_READ_FORMAT_CAPACITY: {
+-      scsi_read_format_capacity_data_t read_fmt_capa =
+-      {
+-        .list_length = 8,
+-        .block_num = 0,
+-        .descriptor_type = 2, // formatted media
+-        .block_size_u16 = 0
+-      };
+-
+-      uint32_t block_count;
+-      uint16_t block_size;
+-
+-      tud_msc_capacity_cb(lun, &block_count, &block_size);
+-
+-      // Invalid block size/count from callback, possibly unit is not ready
+-      // stall this request, set sense key to NOT READY
+-      if (block_count == 0 || block_size == 0) {
+-        resplen = -1;
++    // FloppyRevival: READ FORMAT CAPACITIES is not built in here. A UFI
++    // floppy must list every capacity it can lay down and tell an
++    // unformatted medium apart from a formatted one (descriptor code), which
++    // the generic answer cannot; the command falls through to
++    // tud_msc_scsi_cb like the other UFI-specific ones.
+ 
+-        // set default sense if not set by callback
+-        if (p_msc->sense_key == 0) {
+-          set_sense_medium_not_present(lun);
+-        }
+-      } else {
+-        read_fmt_capa.block_num = tu_htonl(block_count);
+-        read_fmt_capa.block_size_u16 = tu_htons(block_size);
+-
+-        resplen = sizeof(read_fmt_capa);
+-        TU_VERIFY(0 == tu_memcpy_s(buffer, bufsize, &read_fmt_capa, (size_t) resplen));
+-      }
+-    }
+-    break;
+-
+     case SCSI_CMD_INQUIRY: {
+       scsi_inquiry_resp_t inquiry_rsp =
+       {
+@@ -772,7 +759,11 @@
+     TU_LOG_DRV("  tud_msc_read10_cb() return -1\r\n");
+ 
+     // set sense
+-    set_sense_medium_not_present(p_cbw->lun);
++    // FloppyRevival: only as a default. The application's own sense (a
++    // medium error on a disk that is present) must reach REQUEST SENSE.
++    if (p_msc->sense_key == 0) {
++      set_sense_medium_not_present(p_cbw->lun);
++    }
+ 
+     fail_scsi_op(rhport, p_msc, MSC_CSW_STATUS_FAILED);
+   } else if (nbytes == 0) {
+@@ -828,7 +819,11 @@
+     p_msc->xferred_len += xferred_bytes;
+ 
+     // Set sense
+-    set_sense_medium_not_present(p_cbw->lun);
++    // FloppyRevival: only as a default, as for READ(10) above (a deferred
++    // write fault or a write-protect flip must not read "no medium").
++    if (p_msc->sense_key == 0) {
++      set_sense_medium_not_present(p_cbw->lun);
++    }
+ 
+     fail_scsi_op(rhport, p_msc, MSC_CSW_STATUS_FAILED);
+   } else {

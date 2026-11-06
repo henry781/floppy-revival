@@ -1,0 +1,34 @@
+name: firmware
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+
+      - name: Fetch Pico SDK
+        run: |
+          git clone --depth 1 --branch 2.3.1 https://github.com/raspberrypi/pico-sdk.git "$HOME/pico-sdk"
+          git -C "$HOME/pico-sdk" submodule update --init --depth 1 lib/tinyusb
+
+      - name: Host tests
+        run: PICO_SDK_PATH="$HOME/pico-sdk" sh firmware/tests/run_host_tests.sh
+
+      - name: Build
+        run: |
+          cmake -S firmware -B firmware/build -DPICO_SDK_PATH="$HOME/pico-sdk"
+          cmake --build firmware/build -j
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: firmware/build/*.uf2

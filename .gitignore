@@ -1,0 +1,22 @@
+# Firmware build output
+build/
+firmware/build/
+
+# KiCad local files
+*.kicad_prl
+*.lck
+*-backups/
+.history/
+fp-info-cache
+\#auto_saved_files#
+
+# Simulation scratch output
+hardware/simulation/_*.cir
+hardware/simulation/*.dat
+hardware/simulation/*.log
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+__pycache__/

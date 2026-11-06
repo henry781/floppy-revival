@@ -1,0 +1,86 @@
+* LM267x switching model for ngspice, built from TI's LM2678 PSpice transient
+* model (SNVM880, WEBENCH 2012): same error amplifier and internal
+* compensation (GM1, Vin-dependent GM2 table, R3/R4/L1, R5/C1/C6/R10, output
+* clamps 0.9V..5V, gain 0.8), same RC oscillator (RT 100k / CT 39.9p charging
+* to 5V, ramp 0.6 -> 3.2V, 0.225us discharge = forced off time, ~263 kHz) and
+* switch Rds(on).  Differences: the switch is a smooth conductance (tanh)
+* instead of the gate-driven FET; the forced-off time is set to the
+* datasheet's 91% maximum duty; the cycle-by-cycle current limit is a smooth
+* clamp at ILIM (no latch, no duty fold-back): peak currents at the limit are
+* right, the dissipation during a limit event is not; undervoltage lockout at
+* VIN 7.9V as in TI's model.
+* Params: GM1 (12V 1.54m, 5V 0.673m, ADJ 0.673m), RFB2/RFB1 (internal divider, 2.5k bottom;
+* ADJ: RFB2 ~0 and RFB1 ~open, the external divider sets the output),
+* RON (LM2678 0.12, LM2676 0.15), ILIM (typ: LM2678 7A, LM2676 4.5A).
+.subckt LM267X_SW vin fb sw gnd PARAMS: GM1=1.54m RFB2=22.19k RFB1=2.5k RON=0.12 ILIM=7 TOFF=0.34u
+.param TCH={100k*39.9p*ln((5-0.6)/(5-3.2))}
+.param TPER={TOFF + TCH}
+Vref refv gnd 1.215
+Rfb2 fb ea1 {RFB2}
+Rfb1 ea1 gnd {RFB1}
+Gm1 gnd n15 ea1 refv {GM1}
+Bgm2 gnd n17 I = v(refv,n15) * v(gm2)
+Bgm2v gm2 gnd V = max(0.48m, min(1.48m, v(vin,gnd) < 10 ? 1.48m : (v(vin,gnd) < 20 ? 1.48m - (v(vin,gnd)-10)*0.0807m : 0.673m - (v(vin,gnd)-20)*0.00965m)))
+R3 refv n16 10k
+R4 n15 n16 2k
+L1 n16 refv 20m
+R5 n17 n18 15k
+C1 n18 gnd 10n
+C6 n17 n18 105p
+R10 n17 gnd 300k
+D1 n17 r5v DCL
+D2 vcl n17 DCL
+Vr5 r5v gnd 5
+Vcl vcl gnd 0.9
+.model DCL D
+Berr err gnd V = 0.8*v(n17,gnd)
+* oscillator ramp: forced high during the 0.225us discharge, then RC from 0.6V
+Bramp ramp gnd V = (time - floor(time/TPER)*TPER) < TOFF ? 5 : 5 - 4.4*exp(-((time - floor(time/TPER)*TPER) - TOFF)/(100k*39.9p))
+Ben en gnd V = 0.5*(1 + tanh((v(vin,gnd) - 7.9)/0.1))
+* switch on while ramp < error output, clamped at ILIM, off below UVLO
+Vsns vin vins 0
+* switch current sensed through a 20 ns filter (no algebraic loop in the clamp)
+Fsns gnd isn Vsns 1
+Risn isn gnd 1
+Cisn isn gnd 20n
+Bsw vins sw I = v(vins,sw) * (0.5/RON) * (1 + tanh((v(err,gnd) - v(ramp,gnd))/5m)) * v(en,gnd) * 0.5*(1 + tanh((ILIM - v(isn,gnd))/0.1))
+Csw sw gnd 300p
+.ends LM267X_SW
+
+* same core with the ON/OFF pin (enabled above 1.4V, TI threshold)
+.subckt LM267X_SWEN vin fb sw gnd onoff PARAMS: GM1=1.54m RFB2=22.19k RFB1=2.5k RON=0.12 ILIM=7 TOFF=0.34u
+.param TCH={100k*39.9p*ln((5-0.6)/(5-3.2))}
+.param TPER={TOFF + TCH}
+Vref refv gnd 1.215
+Rfb2 fb ea1 {RFB2}
+Rfb1 ea1 gnd {RFB1}
+Gm1 gnd n15 ea1 refv {GM1}
+Bgm2 gnd n17 I = v(refv,n15) * v(gm2)
+Bgm2v gm2 gnd V = max(0.48m, min(1.48m, v(vin,gnd) < 10 ? 1.48m : (v(vin,gnd) < 20 ? 1.48m - (v(vin,gnd)-10)*0.0807m : 0.673m - (v(vin,gnd)-20)*0.00965m)))
+R3 refv n16 10k
+R4 n15 n16 2k
+L1 n16 refv 20m
+R5 n17 n18 15k
+C1 n18 gnd 10n
+C6 n17 n18 105p
+R10 n17 gnd 300k
+D1 n17 r5v DCL
+D2 vcl n17 DCL
+Vr5 r5v gnd 5
+Vcl vcl gnd 0.9
+.model DCL D
+Berr err gnd V = 0.8*v(n17,gnd)
+* disabled: TI's SS node is held low, so the duty starts from zero at enable
+Bss ssn gnd V = v(en,gnd) > 0.5 ? 1 : 0
+* oscillator ramp: forced high during the 0.225us discharge, then RC from 0.6V
+Bramp ramp gnd V = (time - floor(time/TPER)*TPER) < TOFF ? 5 : 5 - 4.4*exp(-((time - floor(time/TPER)*TPER) - TOFF)/(100k*39.9p))
+Ben en gnd V = 0.5*(1 + tanh((v(vin,gnd) - 7.9)/0.1)) * 0.5*(1 + tanh((v(onoff,gnd) - 1.4)/0.05))
+* switch on while ramp < error output, clamped at ILIM, off below UVLO
+Vsns vin vins 0
+* switch current sensed through a 20 ns filter (no algebraic loop in the clamp)
+Fsns gnd isn Vsns 1
+Risn isn gnd 1
+Cisn isn gnd 20n
+Bsw vins sw I = v(vins,sw) * (0.5/RON) * (1 + tanh((v(err,gnd) - v(ramp,gnd))/5m)) * v(en,gnd) * 0.5*(1 + tanh((ILIM - v(isn,gnd))/0.1))
+Csw sw gnd 300p
+.ends LM267X_SWEN

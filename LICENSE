@@ -1,0 +1,15 @@
+Floppy Revival is released under three licences, one per kind of content.
+
+  firmware/                      MIT                 LICENSES/MIT.txt
+  hardware/ (KiCad project,      CERN-OHL-P-2.0      LICENSES/CERN-OHL-P-2.0.txt
+    fabrication files,
+    simulation decks)
+  docs/, README.md               CC-BY-4.0           LICENSES/CC-BY-4.0.txt
+
+Copyright (c) 2026 Floppy Revival contributors.
+
+Some files come from other projects and keep their own licence and
+copyright notice. They are listed in THIRD_PARTY.md.
+
+Everything here is provided as is, without warranty of any kind. See the
+disclaimer in README.md and the warranty sections of each licence.

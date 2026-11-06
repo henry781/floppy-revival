@@ -1,0 +1,30 @@
+* Adapter hot-plug straight into the ~1 mF input bank (no Q1), D3 TVS present
+.model SWPLUG SW(VT=0.5 VH=0.1 RON=0.01 ROFF=100MEG)
+.model DTVS27 D(IS=1e-12 N=1.5 RS=0.6 BV=27 IBV=1m CJO=2.5n VJ=0.75 M=0.33)
+VAD ad 0 19.5
+RAD ad ad1 0.05
+SPLUG ad1 ad2 plug 0 SWPLUG
+VPLUG plug 0 PWL(0 0 1m 0 1.001m 1)
+LCAB ad2 ad3 1.5u
+RCAB ad3 j4 0.05
+RF1 j4 v19 0.06
+D3 0 v19 DTVS27
+C8 v19 c8 100u IC=0
+RC8 c8 0 0.15
+RL5 v19 l5a 0.023
+L5 l5a vb 4.7u
+C12 vb c12 470u IC=0
+RC12 c12 0 0.03
+C16 vb c16 470u IC=0
+RC16 c16 0 0.03
+.options method=gear reltol=1e-4
+.control
+tran 10n 3m 0 10n uic
+let iad = -i(VAD)
+meas tran i_pk max iad from=1m to=3m
+meas tran v19_pk max v(v19) from=1m to=3m
+meas tran vb_pk max v(vb) from=1m to=3m
+meas tran il5_pk max i(L5) from=1m to=3m
+meas tran t_above_10A when iad=10 fall=1 from=1.0011m
+.endc
+.end

@@ -1,0 +1,28 @@
+* Input pi filter output impedance seen by U3/U4 (Middlebrook check)
+* source side: adapter 50 mohm + cable 1.5uH/50 mohm + F1 60 mohm + Q1 Rds(on) ~0.12 ohm, C8 100u (ESR 0.15)
+RAD j 0 0.05
+LCAB j a 1.5u
+RCAB a f 0.05
+RF1Q f sw 0.18
+C8 sw c8 100u
+RC8 c8 0 0.15
+R26 sw 0 4.7k
+RL5 sw l5 0.023
+L5 l5 vb 4.7u
+C12 vb c12 470u
+RC12 c12 0 0.03
+C16 vb c16 470u
+RC16 c16 0 0.03
+C13 vb c13 1u
+RC13 c13 0 5m
+C17 vb c17 1u
+RC17 c17 0 5m
+IAC 0 vb AC 1
+.control
+ac dec 200 10 1meg
+let zmag = abs(v(vb))
+meas ac zpk max zmag
+meas ac fpk when zmag=zpk
+wrdata filter_z.dat zmag
+.endc
+.end

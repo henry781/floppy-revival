@@ -1,0 +1,5 @@
+_*.cir
+*.dat
+*.log
+__pycache__/
+_*.txt
