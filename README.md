@@ -1,5 +1,7 @@
 # Floppy Revival
 
+[![firmware](https://github.com/henry781/floppy-revival/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/henry781/floppy-revival/actions/workflows/firmware.yml)
+
 A Raspberry Pi Pico 2 board that connects a real 5.25" floppy drive to a
 modern computer over USB. The computer sees an ordinary USB floppy drive:
 insert a PC disk and it mounts, with no special software on the host side.
