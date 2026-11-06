@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install toolchain
         run: |
@@ -28,7 +28,7 @@ jobs:
           cmake -S firmware -B firmware/build -DPICO_SDK_PATH="$HOME/pico-sdk"
           cmake --build firmware/build -j
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: firmware
           path: firmware/build/*.uf2
